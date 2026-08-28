@@ -1,6 +1,15 @@
-<h2 align="center" style="border:0 !important; border-bottom:0 !important; box-shadow:none !important; margin-top:8px;">
-Knowledge Distillation During Mid-Training Favors Reasoning over Factual Recall
-</h2>
+<h1 align="center" style="border:0 !important; border-bottom:0 !important; box-shadow:none !important; margin-top:8px;">
+Knowledge Distillation During Mid-Training 
+  
+  Favors Reasoning over Factual Recall
+</h1>
+
+<p align="center">
+  <img src="./figures/tradeoff.png" width="400" style="vertical-align:top; border:0;">
+</p>
+
+This code is the official implementation of our [paper](). 
+
 
 Code for the paper on knowledge distillation at the mid-training budget: instead
 of augmenting or filtering a small, high-quality, capability-targeted data pool,
@@ -109,43 +118,3 @@ In-training OLMES evaluation runs every 1200 steps via the `async_eval_gpus`
 path and requires the separate OLMES env (`OLMES_CONDA_ENV`). Delete the
 `eval:` block from a recipe YAML to turn it off.
 
-## Paper → code
-
-| Claim | Recipe / config |
-|---|---|
-| KD beats NTP at the mid-training budget | `midtrain_recipes/switch_distill.yaml` vs `midtrain_recipes/ntp_baseline.yaml` |
-| Loss geometry: KL direction (forward vs reverse) | `midtrain_recipes/fkd.yaml` vs `rkd.yaml` |
-| Loss geometry: presence of CE, entropy gating | `midtrain_recipes/rkd.yaml` vs `switch_distill.yaml` |
-| Teacher choice: post-training stage and size | `midtrain_recipes/fkd.yaml` at `TEACHER=1b` vs `TEACHER=7b` |
-| Reasoning–recall tradeoff | all mid-training recipes |
-| Tradeoff is specific to mid-training (sign flips from scratch) | `pretrain_recipes/*` vs `midtrain_recipes/*` |
-| Gains sustain through post-training | `post_training/scripts/pipeline_post_training.sh` |
-| SFT learning rate dominates post-training | `post_training/` at `LEARNING_RATE=5e-6` (not Tulu-3's 3e-5) |
-
-Every row is evaluated with the protocol in `evaluation/README.md`, which
-specifies the task aliases, shot counts, metrics, and macro definitions in full.
-Our internal table- and figure-generation code is not part of this release; the
-two **non-default scorers** are (`robust_recall.py`, `bbh_robust_rescore.py`),
-because the reported numbers depend on them.
-
-Two caveats before comparing numbers: **BBH is scored with a non-standard,
-homegrown re-extraction** (`bbh_flex`), because the official extractor is
-model-dependently biased against `\boxed{}`-style outputs, and MATH uses
-`exact_match_flex`. Both are explained in `evaluation/README.md`.
-
-## Reproducibility notes
-
-- No weights or eval outputs ship. `evaluation/` specifies the protocol and
-  provides the two non-default scorers; it tells you exactly what to compute.
-- `scripts/env.sh` defaults point into a deletable sandbox (`${CACHE_DIR}`), not
-  at real data. Nothing works until you set the four roots it names.
-- Every `#SBATCH --account/--qos/--partition` in `post_training/scripts/` reads
-  `CHANGE_ME`.
-- Neither the open-instruct nor the olmes local modifications are distributed;
-  each subfolder README lists the changes needed to reproduce them.
-- Reproducing AI2's published OLMo-2 1B numbers exactly was not always possible;
-  the residuals we could not close are listed in `evaluation/README.md`.
-
-## License
-
-BSD-3-Clause, inherited from upstream lingua. See `LICENSE` and `NOTICE`.
