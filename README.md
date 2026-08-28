@@ -1,4 +1,6 @@
-# midtraining-distillation
+<h2 align="center" style="border:0 !important; border-bottom:0 !important; box-shadow:none !important; margin-top:8px;">
+Knowledge Distillation During Mid-Training Favors Reasoning over Factual Recall
+</h2>
 
 Code for the paper on knowledge distillation at the mid-training budget: instead
 of augmenting or filtering a small, high-quality, capability-targeted data pool,
