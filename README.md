@@ -2,12 +2,11 @@
   <img src="./figures/teaser_fig.png" width="1200" style="vertical-align:top; border:0;">
 </p>
 
-This code is the official implementation of our paper, [Knowledge Distillation During Mid-Training Favors Reasoning over Factual Recall]().
+This code is the official implementation of our paper, [Knowledge Distillation During Mid-Training Favors Reasoning over Factual Recall](). It includes code for pre-training and mid-training, as well as Switch Distillation, our proposed distillation method. 
 
 
-Built on [facebookresearch/lingua](https://github.com/facebookresearch/lingua),
-with post-training via [allenai/open-instruct](https://github.com/allenai/open-instruct)
-and evaluation via [allenai/olmes](https://github.com/allenai/olmes).
+Our code makes extensive use of [facebookresearch/lingua](https://github.com/facebookresearch/lingua) for pre-training and mid-training,
+[allenai/open-instruct](https://github.com/allenai/open-instruct) for post-training, and [allenai/olmes](https://github.com/allenai/olmes) for evaluation.
 
 
 ## Layout
