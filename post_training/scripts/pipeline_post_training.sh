@@ -150,7 +150,7 @@ run_sbatch() {
     echo "${out}" | awk '/Submitted batch job/ {print $4}'
 }
 
-# On fair-sc under cgroup v2, ANY explicit `sbatch --export=...` (even
+# On some Slurm sites running cgroup v2, ANY explicit `sbatch --export=...` (even
 # `--export=ALL,FOO=bar`) makes slurmd harvest the login environment via `su`.
 # That hangs, and the job is held at Priority=0 with
 # `user_env_retrieval_failed_requeued_held` and never runs. `scontrol release`
