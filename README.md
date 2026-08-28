@@ -1,14 +1,9 @@
-<h2 align="center" style="border:0 !important; border-bottom:0 !important; box-shadow:none !important; margin-top:8px;">
-Knowledge Distillation During Mid-Training 
-  
-  Favors Reasoning over Factual Recall
-</h2>
-
 <p align="center">
-  <img src="./figures/tradeoff.png" width="400" style="vertical-align:top; border:0;">
+  <img src="./figures/teaser_fig.png" width="1200" style="vertical-align:top; border:0;">
 </p>
 
-This code is the official implementation of our [paper](). 
+This code is the official implementation of our paper, [Knowledge Distillation During Mid-Training Favors Reasoning over Factual Recall]().
+
 
 Built on [facebookresearch/lingua](https://github.com/facebookresearch/lingua),
 with post-training via [allenai/open-instruct](https://github.com/allenai/open-instruct)
