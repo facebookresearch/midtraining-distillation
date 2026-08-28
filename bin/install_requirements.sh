@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
 # bin/install_requirements.sh
 #
 # Set up the conda env for midtraining-distillation training, eval, and analysis.

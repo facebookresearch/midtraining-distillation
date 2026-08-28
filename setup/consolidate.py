@@ -1,3 +1,5 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
 from lingua.checkpoint import consolidate_checkpoints
 import argparse
 

@@ -1,3 +1,5 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
 """
 OLMES-based evaluation for Lingua training checkpoints.
 

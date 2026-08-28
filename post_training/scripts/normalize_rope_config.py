@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
 """Normalize HF config.json to the flat RoPE schema for older inference stacks.
 
 Background

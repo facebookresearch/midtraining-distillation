@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
 # scripts/fetch_models.sh — download the three HF checkpoints used by the
 # supported recipes and convert the student init into a Lingua DCP checkpoint.
 #

@@ -1,4 +1,6 @@
 #!/bin/bash
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
 # scripts/_sbatch_inner.sh — runs INSIDE sbatch / srun. Sets up env, then
 # torchruns apps.main.train with the chosen recipe YAML.
 #

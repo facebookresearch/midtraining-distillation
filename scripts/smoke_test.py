@@ -1,3 +1,5 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
 """scripts/smoke_test.py — end-to-end smoke test for the training setup.
 
 Confirms:

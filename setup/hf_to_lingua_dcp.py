@@ -1,3 +1,5 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
 """Download an HF causal-LM checkpoint and convert it to a Lingua DCP checkpoint.
 
 Output layout (rooted at ``--output``):

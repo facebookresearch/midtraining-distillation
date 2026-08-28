@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
 # OLMo-2 1B RLVR stage 2 (MATH-only) on top of the RLVR-1 checkpoint —
 # 4-NODE SCALED REPRODUCTION (mirrors train_olmo2_1b_rlvr1_4node_scaled.sh).
 #

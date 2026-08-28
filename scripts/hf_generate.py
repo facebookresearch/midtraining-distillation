@@ -1,3 +1,5 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
 """scripts/hf_generate.py — load a converted HF checkpoint and print completions
 for a few fixed prompts.
 

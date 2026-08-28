@@ -1,4 +1,6 @@
 #!/bin/bash
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
 # scripts/launch_midtrain.sh — launch a mid-training run via sbatch.
 #
 # Usage:

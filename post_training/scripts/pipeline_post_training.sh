@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
 # Orchestrator: submits SFT -> DPO -> RLVR1 -> RLVR2 as four slurm jobs
 # chained via --dependency=afterok. Each stage's HF checkpoint is wired
 # into the next stage's inputs.

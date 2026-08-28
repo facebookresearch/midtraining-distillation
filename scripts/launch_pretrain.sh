@@ -1,4 +1,6 @@
 #!/bin/bash
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
 # scripts/launch_pretrain.sh — launch a from-scratch pretraining run via sbatch.
 #
 # This is the controlled from-scratch replication reported in the paper's

@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
 # scripts/lingua_to_hf.sh — consolidate a Lingua DCP checkpoint and convert it
 # back to HuggingFace format.
 #

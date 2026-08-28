@@ -1,3 +1,5 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
 """Download `allenai/dolmino-mix-1124` and shuffle into per-domain chunks.
 
 End layout, with `--data-dir ${DATA_ROOT}`:

@@ -1,4 +1,6 @@
 #!/bin/bash
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
 #SBATCH --job-name=train_watchdog
 #SBATCH --output=${SLURM_LOG_DIR}/train_watchdog-%j.out
 #SBATCH --error=${SLURM_LOG_DIR}/train_watchdog-%j.err

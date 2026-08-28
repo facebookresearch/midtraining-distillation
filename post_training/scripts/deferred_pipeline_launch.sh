@@ -1,4 +1,6 @@
 #!/bin/bash
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
 # Deferred post-training launcher: waits for a midtrain HF checkpoint to be
 # written, then runs pipeline_post_training.sh (SFT->DPO->RLVR1->RLVR2).
 # Submitted with --dependency=afterok:<midtrain_job> so it only fires once

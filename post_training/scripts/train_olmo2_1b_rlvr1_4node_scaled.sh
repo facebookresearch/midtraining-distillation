@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
 # OLMo-2 1B RLVR stage 1 (GSM/MATH/IF) — 4-NODE SCALED REPRODUCTION
 #
 # Preserves official local minibatch geometry but uses all 4 nodes for

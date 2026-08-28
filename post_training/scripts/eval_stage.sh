@@ -1,4 +1,6 @@
 #!/bin/bash
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
 # Per-stage async eval helper for pipeline_post_training.sh.
 # Submitted with --dependency=afterok:<stage_train_jid>; when the stage's
 # checkpoint exists it resolves the HF path (handles the RLVR

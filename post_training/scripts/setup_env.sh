@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
 # Fresh uv-based environment setup for OLMo-2 1B SFT/DPO/RLVR.
 # Creates a clean virtual environment from scratch, bypassing conda dependency hell.
 #

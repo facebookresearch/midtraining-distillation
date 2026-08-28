@@ -1,3 +1,5 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
 # Copyright 2024 Lingua-Fork and the Tatsu Lab.
 # Copyright 2022 EleutherAI and The HuggingFace Inc. team. All rights reserved.
 #

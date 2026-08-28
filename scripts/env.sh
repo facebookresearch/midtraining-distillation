@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+
 # Environment configuration. Source before training, eval, or analysis:
 #   source scripts/env.sh
 # Override any variable by exporting it before sourcing, or edit the defaults
