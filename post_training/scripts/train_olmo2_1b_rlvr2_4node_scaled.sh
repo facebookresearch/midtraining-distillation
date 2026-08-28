@@ -29,7 +29,7 @@
 # A TP=4 vLLM engine requires 4 GPUs packed on a single node (STRICT_PACK),
 # which is infeasible under this 6/6/6/6 learner layout — total GPU count
 # matches (8 free, 8 needed) but per-node bin packing fails. See the rlvr1
-# scaled script for the full vLLM placement deadlock write-up.
+# scaled script for the vLLM placement reasoning.
 #
 # What's preserved vs published:
 #   ✓ local minibatch = 32 (the LR-calibration unit)
@@ -128,7 +128,7 @@ VLLM_GPU_MEMORY_UTILIZATION="${VLLM_GPU_MEMORY_UTILIZATION:-0.82}"
 # same update count as the published 2-node recipe.
 # LEARNING_RATE: HARDCODED to 5e-7 (AI2 Tulu-3 1B standard). DO NOT change
 # and DO NOT make this overridable via env. See train_olmo2_1b_rlvr1_4node_scaled.sh
-# for the incident note (2026-06-24, baselines overcooked at 10x LR).
+# for why this must not be overridable.
 LEARNING_RATE="5e-7"
 BETA="${BETA:-0.01}"
 KL_ESTIMATOR="${KL_ESTIMATOR:-3}"
@@ -187,8 +187,8 @@ export NCCL_CUMEM_ENABLE=0
 # Ensure Ray can see all GPUs
 export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7
 
-# Prefer system CA bundle; openinstruct env's certifi has been observed to
-# point at a missing cacert.pem, which silently breaks wandb artifact upload.
+# Prefer the system CA bundle: a certifi pointing at a missing cacert.pem
+# breaks wandb artifact upload silently.
 if [[ -z "${CA_BUNDLE:-}" ]]; then
   for c in /etc/ssl/certs/ca-certificates.crt /etc/pki/tls/certs/ca-bundle.crt /etc/ssl/cert.pem; do
     [[ -f "$c" ]] && { CA_BUNDLE="$c"; break; }
@@ -255,7 +255,7 @@ if (( ${#NUM_LEARNERS_PER_NODE_ARR[@]} != RAY_NNODES )); then
 fi
 
 # Bin-pack preflight: each vLLM engine reserves TP GPUs on a single node
-# (Ray PACK strategy, see open_instruct/vllm_utils.py:1228). Verify that at
+# (Ray PACK strategy). Verify that at
 # least VLLM_NUM_ENGINES nodes have >= TP free GPUs, otherwise vLLM placement
 # will deadlock silently after weights load.
 _VLLM_FEASIBLE_NODES=0
@@ -434,7 +434,7 @@ if [ "${AUTO_EVAL:-1}" = "1" ]; then
     if [ -x "${EVAL_WRAPPER}" ]; then
         EVAL_OUTPUT_DIR="${EVAL_OUTPUT_DIR:-${OLMES_ROOT}/results/posttrain/${EXP_NAME}-2604steps}"
         echo "=== Auto-submitting OLMES eval -> ${EVAL_OUTPUT_DIR} ==="
-        # NO `sbatch --export=` (cgroup v2 -> Priority=0 held). Vars ride in
+        # No `sbatch --export=` (some cgroup-v2 sites hold the job). Vars ride in
         # sbatch's own env and reach the job via the default --export=ALL.
         env RLVR2_PARENT_DIR="${OUTPUT_DIR}" EXP_NAME="${EXP_NAME}" \
             OUTPUT_DIR="${EVAL_OUTPUT_DIR}" \

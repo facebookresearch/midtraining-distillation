@@ -145,19 +145,13 @@ accelerate launch \
     open_instruct/dpo_tune_cache.py \
     "${DPO_ARGS[@]}"
 
-# Normalize RoPE config schema for older inference stacks.
-# transformers==5.4.0 (this venv) saves config.json with the new nested
-# `rope_parameters` schema. transformers==4.57.3 + vllm==0.11.0 (e.g. our
-# olmes eval env) only know the flat `rope_theta` schema and silently fall
-# back to rope_theta=10000 when the new key is the only one present, which
-# corrupts attention and produces degenerate generations. This shim adds
-# the flat schema in-place (keeping the nested one for forward compat).
-# Idempotent.
+# Normalize the RoPE config schema. Newer transformers saves the nested
+# `rope_parameters` key; older transformers + vLLM read only the flat
+# `rope_theta` and silently fall back to 10000, corrupting attention. This
+# adds the flat schema in place and is idempotent.
 echo "=== Normalizing RoPE config schema for older inference stacks ==="
-# Use an absolute path: under sbatch, "$0" points at the slurm staging dir
-# (/var/spool/slurmd/job<id>/<scriptname>), not the original script dir, so
-# "$(dirname "$0")" fails to find the sibling .py. The repo root is
-# already hard-coded above (`cd /checkpoint/.../open-instruct`).
+# Absolute path: under sbatch "$0" points at the slurm staging dir, so
+# "$(dirname "$0")" cannot find the sibling .py.
 python ${POST_TRAINING_SCRIPTS}/normalize_rope_config.py "${OUTPUT_DIR}/${EXP_NAME}" \
     || { echo "ERROR: normalize_rope_config.py failed; eval will produce degenerate output" >&2; exit 1; }
 
@@ -169,13 +163,10 @@ echo "=== DPO done -> ${OUTPUT_DIR} ==="
 if [ "${AUTO_EVAL:-1}" = "1" ]; then
     EVAL_OUTPUT_DIR="${EVAL_OUTPUT_DIR:-${OLMES_ROOT}/results/posttrain/${EXP_NAME}}"
     echo "=== Auto-submitting OLMES eval -> ${EVAL_OUTPUT_DIR} ==="
-    # --export=NONE so the child sbatch doesn't inherit this job's PATH (which
-    # has the open-instruct venv first); eval_single_posttrain.sh activates the
-    # olmes conda env, but conda activate only prepends — a polluted PATH still
-    # resolves python to the wrong venv and breaks `import oe_eval`.
-    # NO `sbatch --export=` (cgroup v2 holds the job at Priority=0,
-    # user_env_retrieval_failed_requeued_held). The old --export=NONE kept this job's
-    # venv PATH out of the child eval; scrub the venv vars + pin a system PATH instead.
+    # No `sbatch --export=` (some cgroup-v2 sites hold the job at Priority=0).
+    # The child eval must not inherit this job's venv PATH -- conda activate only
+    # prepends, so a polluted PATH resolves python to the wrong venv. Scrub the
+    # venv vars and pin a system PATH instead.
     env -u VIRTUAL_ENV -u PYTHONPATH -u PYTHONHOME -u CONDA_PREFIX -u CONDA_DEFAULT_ENV \
         PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" \
         HOME="${HOME}" USER="${USER}" \

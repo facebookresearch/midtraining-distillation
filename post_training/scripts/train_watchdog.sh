@@ -51,11 +51,8 @@ if [ "${ATTEMPT}" -gt "${MAX_RETRIES}" ]; then
 fi
 
 # Resubmit training. Forward the original export vars + bump ATTEMPT.
-# NO `sbatch --export=` here: on some cgroup-v2 Slurm sites an explicit --export
-# makes slurmd harvest the login env via `su`, which hangs, and the resubmitted
-# job is held at Priority=0 (user_env_retrieval_failed_requeued_held) forever --
-# i.e. the retry silently never runs. Pass the vars in sbatch's own environment
-# with an `env` prefix instead and let the default --export=ALL carry them.
+# Do not pass `sbatch --export=`: some cgroup-v2 Slurm sites then hold the
+# job at Priority=0 forever. Put the vars in sbatch's own environment instead.
 NEXT_ATTEMPT=$((ATTEMPT + 1))
 IFS=',' read -ra TRAIN_KV <<< "${TRAIN_EXPORT_VARS}"
 

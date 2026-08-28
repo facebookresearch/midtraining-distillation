@@ -103,10 +103,9 @@ echo "NNODES=${NNODES}  TOTAL_GPUS=${TOTAL_GPUS}"
 # Per-device batch stays at 2 (same memory footprint), grad_accum drops 8 → 2.
 PER_DEVICE_BATCH=${PER_DEVICE_BATCH:-2}
 GRAD_ACCUM=${GRAD_ACCUM:-2}
-# SFT LR default 5e-6 -- NOT the Tulu-3 default of 3e-5. See post_training/README.md.
-# Was 3e-5 — a stray env override trained idx200 (q20-13B) SFT at 5e-5 and
-# permanently cratered recall/MC (triviaqa 51.4->41.7, arc-c 58.8->45.7), caught
-# 2026-07-29. The pipeline (pipeline_post_training.sh) also hard-pins 5e-6.
+# SFT LR default 5e-6 -- deliberately NOT the Tulu-3 default of 3e-5, which
+# permanently craters recall/MC on a KD-initialised checkpoint. See
+# post_training/README.md. pipeline_post_training.sh also hard-pins 5e-6.
 LEARNING_RATE=${LEARNING_RATE:-5e-6}
 NUM_TRAIN_EPOCHS=${NUM_TRAIN_EPOCHS:-2}
 CHECKPOINTING_STEPS=${CHECKPOINTING_STEPS:-epoch}
@@ -213,13 +212,10 @@ echo "=== SFT 4-node done -> ${OUTPUT_DIR} ==="
 if [ "${AUTO_EVAL:-1}" = "1" ]; then
     EVAL_OUTPUT_DIR="${EVAL_OUTPUT_DIR:-${OLMES_ROOT}/results/posttrain/${EXP_NAME}}"
     echo "=== Auto-submitting OLMES eval -> ${EVAL_OUTPUT_DIR} ==="
-    # NO `sbatch --export=`: under cgroup v2 an explicit --export (NONE or ALL)
-    # makes slurmd harvest the login env via `su`, which hangs and holds the job at
-    # Priority=0 (user_env_retrieval_failed_requeued_held) forever. The old --export=NONE
-    # was here to keep this job's open-instruct venv PATH out of the child eval, so we
-    # reproduce that by scrubbing the venv vars and pinning a system PATH in sbatch's own
-    # environment, then letting the default --export=ALL propagate it. /usr/bin/sbatch is
-    # absolute because the pinned PATH no longer contains whatever provided sbatch.
+    # No `sbatch --export=` (some cgroup-v2 sites hold the job at Priority=0).
+    # The child eval must not inherit this job's venv PATH, so scrub the venv
+    # vars and pin a system PATH in sbatch's own environment. sbatch is called
+    # by absolute path because the pinned PATH no longer provides it.
     env -u VIRTUAL_ENV -u PYTHONPATH -u PYTHONHOME -u CONDA_PREFIX -u CONDA_DEFAULT_ENV \
         PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" \
         HOME="${HOME}" USER="${USER}" \

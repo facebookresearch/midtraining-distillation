@@ -27,9 +27,8 @@
 # Why TP=2 (not TP=4): with 6 learners/node, only 2 GPUs/node are free.
 # A TP=4 vLLM engine requires 4 GPUs packed on a single node (STRICT_PACK),
 # which is infeasible under this 6/6/6/6 learner layout — total GPU count
-# matches (8 free, 8 needed) but per-node bin packing fails. Job 7936357
-# (TP=4 × 2 engines) hung silently in vLLM placement-group wait for ~65 min
-# before being killed. TP=2 × 4 engines fits exactly: 6 + 2 = 8 GPUs/node.
+# matches (8 free, 8 needed) but per-node bin packing fails, and vLLM then
+# waits on placement forever. TP=2 × 4 engines fits exactly: 6 + 2 = 8/node.
 #
 # What's preserved vs published:
 #   ✓ local minibatch = 32 (the LR-calibration unit)
@@ -101,12 +100,8 @@ VLLM_GPU_MEMORY_UTILIZATION="${VLLM_GPU_MEMORY_UTILIZATION:-0.82}"
 # samples-per-learner=64 (so local minibatch stays at 32 with num_mini_batches=2).
 # total_episodes doubled to 4M so that GRPO updates = 4M / 1536 ≈ 2604 — the
 # same update count as the published 2-node recipe.
-# LEARNING_RATE: HARDCODED to 5e-7 (AI2 Tulu-3 1B standard). DO NOT change
-# and DO NOT make this overridable via env. On 2026-06-24 we caught the
-# baselines (ntp/kd_rl1b/kd_rl7b) trained at 5e-6 because the pipeline
-# orchestrator's --export=ALL leaked SFT's LR into RLVR via the
-# ${LEARNING_RATE:-5e-7} default that used to live here. Hardcoding
-# prevents recurrence regardless of caller env hygiene.
+# LEARNING_RATE is hardcoded to 5e-7 (Tulu-3 1B standard). Do NOT make it
+# overridable: the orchestrator's --export=ALL would leak the SFT LR in here.
 LEARNING_RATE="5e-7"
 BETA="${BETA:-0.01}"
 KL_ESTIMATOR="${KL_ESTIMATOR:-3}"
@@ -165,8 +160,8 @@ export NCCL_CUMEM_ENABLE=0
 # Ensure Ray can see all GPUs
 export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7
 
-# Prefer system CA bundle; openinstruct env's certifi has been observed to
-# point at a missing cacert.pem, which silently breaks wandb artifact upload.
+# Prefer the system CA bundle: a certifi pointing at a missing cacert.pem
+# breaks wandb artifact upload silently.
 if [[ -z "${CA_BUNDLE:-}" ]]; then
   for c in /etc/ssl/certs/ca-certificates.crt /etc/pki/tls/certs/ca-bundle.crt /etc/ssl/cert.pem; do
     [[ -f "$c" ]] && { CA_BUNDLE="$c"; break; }
@@ -233,7 +228,7 @@ if (( ${#NUM_LEARNERS_PER_NODE_ARR[@]} != RAY_NNODES )); then
 fi
 
 # Bin-pack preflight: each vLLM engine reserves TP GPUs on a single node
-# (Ray PACK strategy, see open_instruct/vllm_utils.py:1228). Verify that at
+# (Ray PACK strategy). Verify that at
 # least VLLM_NUM_ENGINES nodes have >= TP free GPUs, otherwise vLLM placement
 # will deadlock silently after weights load.
 _VLLM_FEASIBLE_NODES=0
@@ -412,7 +407,7 @@ if [ "${AUTO_EVAL:-1}" = "1" ]; then
     # Partition is inferred from QoS prefix (h100_* -> h100, h200_* -> h200).
     EVAL_PARTITION="${EVAL_QOS%%_*}"
     echo "=== Auto-submitting OLMES eval -> ${EVAL_OUTPUT_DIR} (qos=${EVAL_QOS}) ==="
-    # NO `sbatch --export=` (cgroup v2 -> Priority=0 held). Vars ride in
+    # No `sbatch --export=` (some cgroup-v2 sites hold the job). Vars ride in
     # sbatch's own env and reach the job via the default --export=ALL.
     env RLVR1_PARENT_DIR="${OUTPUT_DIR}" EXP_NAME="${EXP_NAME}" \
         OUTPUT_DIR="${EVAL_OUTPUT_DIR}" \

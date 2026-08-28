@@ -7,7 +7,7 @@
 #
 # Required --export: MODEL_SPEC (exact HF dir, OR a parent to search for
 #                    *_checkpoints/step_*), OUTPUT_DIR
-# Optional: EVAL_QOS (default CHANGE_ME)
+# Optional: EVAL_QOS
 #SBATCH --job-name=eval_stage
 #SBATCH --output=${SLURM_LOG_DIR}/eval_stage-%j.out
 #SBATCH --error=${SLURM_LOG_DIR}/eval_stage-%j.err
@@ -44,8 +44,8 @@ fi
 
 mkdir -p "${OUTPUT_DIR}"
 echo "Submitting eval: ${MODEL_PATH} -> ${OUTPUT_DIR} (qos ${EVAL_QOS})"
-# NO `sbatch --export=` (cgroup v2 holds the job at Priority=0,
-# user_env_retrieval_failed_requeued_held). Vars go in sbatch's own env instead.
+# Do not pass `sbatch --export=`: some cgroup-v2 Slurm sites then hold the
+# job at Priority=0 forever. Put the vars in sbatch's own environment instead.
 env HOME="${HOME}" USER="${USER}" \
     MODEL_PATH="${MODEL_PATH}" OUTPUT_DIR="${OUTPUT_DIR}" \
     sbatch --qos="${EVAL_QOS}" \

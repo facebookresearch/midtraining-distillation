@@ -21,10 +21,6 @@
 
 set -euo pipefail
 
-# Strip any inherited login-node proxy env. On many slurm clusters the head
-# node sets HTTP(S)_PROXY pointing at a proxy that isn't reachable
-# from compute nodes — leaving them set makes huggingface_hub time out with
-# ProxyError. Compute nodes go direct, so unset rather than inherit.
 unset HTTP_PROXY HTTPS_PROXY http_proxy https_proxy NO_PROXY no_proxy X2P_PROXY_URL
 
 : "${STUDENT_INIT_PATH:?source scripts/env.sh first}"

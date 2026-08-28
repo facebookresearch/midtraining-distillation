@@ -42,7 +42,7 @@
 #                  starts immediately unless EXTRA_DEPENDENCY gates it.
 #   Example (chain DPO→RLVR1→RLVR2 off a saved SFT, on a chosen qos):
 #     SKIP_SFT=1 SFT_CKPT=/path/to/sft_leaf RUN_TAG=my_variant \
-#     OUT_ROOT=/path/to/post_training QOS=CHANGE_ME \
+#     OUT_ROOT=/path/to/post_training QOS=<your-qos> \
 #     bash post_training/scripts/pipeline_post_training.sh
 #
 # Disable auto-retry:
@@ -52,13 +52,13 @@
 #   Each stage submits an eval (afterok:<stage>) via eval_stage.sh that runs
 #   the Tulu-3 dev suite into ${RES_ROOT}/<stage_exp>. It does NOT block the
 #   training chain (next stage depends on the prior STAGE, not its eval).
-#   Disable with NO_EVAL=1.  Override eval qos with EVAL_QOS (default CHANGE_ME).
+#   Disable with NO_EVAL=1. Override the eval qos with EVAL_QOS.
 #   RES_ROOT default = ${OLMES_ROOT}/results/posttrain
 #
 # Dry run (prints sbatch commands but does not submit):
 #   DRY_RUN=1 bash post_training/scripts/pipeline_post_training.sh
 #
-# Compute footprint when run end-to-end (CHANGE_ME):
+# Compute footprint when run end-to-end:
 #   SFT  : 4 nodes × 8 GPUs × ~2.5h ≈ 80 GPU-h  (4-node parallel; 2.1× faster than 1-node)
 #   DPO  : 1 node × 8 GPUs × ~2h    ≈ 16 GPU-h
 #   RLVR1: 4 nodes × 8 GPUs × ~5h   ≈ 160 GPU-h
@@ -150,17 +150,7 @@ run_sbatch() {
     echo "${out}" | awk '/Submitted batch job/ {print $4}'
 }
 
-# On some Slurm sites running cgroup v2, ANY explicit `sbatch --export=...` (even
-# `--export=ALL,FOO=bar`) makes slurmd harvest the login environment via `su`.
-# That hangs, and the job is held at Priority=0 with
-# `user_env_retrieval_failed_requeued_held` and never runs. `scontrol release`
-# does not help — it re-allocates and fails identically.
-#
-# Fix: never pass --export. Put the stage's KEY=VAL pairs in *sbatch's own*
-# environment with an `env` prefix, and let the default --export=ALL carry them
-# through. The `env` prefix scopes them to that one sbatch, which is what keeps
-# the per-stage LEARNING_RATE pins (SFT 5e-6, RLVR 5e-7) from leaking into a
-# later stage the way a plain `export` in this shell would.
+
 run_sbatch_env() {
     local kv_csv="$1"; shift
     local -a kv=()
@@ -214,9 +204,8 @@ submit_stage_eval() {
     if [[ -n "${NO_EVAL:-}" || -n "${DRY_RUN:-}" ]]; then
         return
     fi
-    # The eval-stage launcher (tiny CPU slot) honors QOS= too; without it the
-    # launcher would sit on eval_stage.sh's CHANGE_ME header. The actual
-    # GPU eval it spawns still uses EVAL_QOS (default CHANGE_ME).
+    # The eval-stage launcher (tiny CPU slot) honors QOS= too; the GPU eval it
+    # spawns uses EVAL_QOS.
     env HOME="${HOME}" USER="${USER}" \
         MODEL_SPEC="${model_spec}" OUTPUT_DIR="${out_dir}" \
         EVAL_QOS="${EVAL_QOS:-CHANGE_ME}" \
@@ -237,18 +226,8 @@ if [[ -z "${SKIP_SFT:-}" ]]; then
     echo
     echo "Submitting SFT..."
     SFT_SCRIPT="${SCRIPTS_DIR}/train_olmo2_1b_sft_4node.sh"
-    # SFT LR is HARDCODED to 5e-6 (Tulu-3 1B SFT standard; matches EVERY
-    # baseline runs). DO NOT change.
-    # This deliberately overrides any LEARNING_RATE in the calling env — exactly
-    # like RLVR1/RLVR2 below hard-pin 5e-7. Without this pin the SFT train script
-    # defaults to 3e-5, and a stray env override once trained idx200 (q20-13B)
-    # SFT at 5e-5, overcooking SFT and cratering recall/MC (triviaqa 51.4->41.7,
-    # arc-c 58.8->45.7, permanent through RL) — caught 2026-07-29. To sweep SFT
-    # LR deliberately, edit this line (same as RLVR).
     SFT_EXPORT_VARS="BASE_CKPT=${BASE_CKPT},EXP_NAME=${SFT_EXP},OUT_ROOT=${OUT_ROOT},LEARNING_RATE=5e-6"
-    # Optional: gate SFT submission on an external prior job finishing.
-    #   EXTRA_DEPENDENCY="afterany:8656092"   waits for the given job before starting SFT
-    #   (use afterany to start regardless of upstream success; afterok requires upstream success)
+
     SFT_DEP_ARG=()
     if [[ -n "${EXTRA_DEPENDENCY:-}" ]]; then
         SFT_DEP_ARG=(--dependency="${EXTRA_DEPENDENCY}")
@@ -310,12 +289,9 @@ if [[ -n "${SKIP_RLVR:-}" ]]; then
 fi
 
 # -------------------- Stage 3: RLVR1 (afterok DPO) --------------------
-# RLVR LR is HARDCODED to 5e-7 (AI2 Tulu-3 1B standard). DO NOT change.
-# This deliberately overrides any LEARNING_RATE in the calling env (which
-# the SFT stage uses) — without it, --export=ALL would leak SFT's LR
-# (e.g. 5e-6) into the RLVR train script's `${LEARNING_RATE:-5e-7}`
-# default and silently overcook the RL stages. This bug was caught on
-# 2026-06-24 after the ntp/kd_rl1b/kd_rl7b baselines trained at 10x LR.
+# RLVR LR is hardcoded to 5e-7 (Tulu-3 1B standard) and deliberately overrides
+# any LEARNING_RATE in the calling env: --export=ALL would otherwise leak the
+# SFT LR into the RL stages and overcook them. Do not make it overridable.
 echo
 echo "Submitting RLVR1 4-node scaled (afterok:${DPO_JOBID})..."
 RLVR_SCRIPT="${SCRIPTS_DIR}/train_olmo2_1b_rlvr1_4node_scaled.sh"
