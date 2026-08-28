@@ -111,64 +111,18 @@ RECIPE=fkd            TEACHER=1b bash scripts/launch_midtrain.sh
 RECIPE=fkd TEACHER_PATH=/path/to/any/hf/model bash scripts/launch_midtrain.sh
 ```
 
-### 3. Post-training 
-We fork from [allenai/open-instruct](https://github.com/allenai/open-instruct) for post-training. 
-
-
-### 4. Evaluation
-We use [allenai/olmes](https://github.com/allenai/olmes) for evaluation.
+### 3. Post-training
+We use [allenai/open-instruct](https://github.com/allenai/open-instruct) for standard post-training of all models. 
 Post-training runs the OLMo-2 1B recipe (Tulu-3 SFT → DPO → RLVR1 → RLVR2) on
 top of any mid-training checkpoint, which is how we check whether the
-mid-training gains survive alignment. One command chains all four stages:
+mid-training gains survive alignment. 
+See [`post_training/README.md`](post_training/README.md) for setup and reproduction details.
 
-```bash
-RUN_TAG=switch_distill \
-BASE_CKPT=${MIDTRAIN_ROOT}/switch_distill/checkpoints/0000028800/hf \
-bash post_training/scripts/pipeline_post_training.sh
-```
-
-**The SFT learning rate is the single most important knob, and it is not the
-Tulu-3 default.** Tulu-3 ships 3e-5, which is calibrated for an
-NTP-initialized model; on a KD-distilled checkpoint it erases most of the
-retained-capability gain and the damage compounds through DPO. We use **5e-6**.
-Anything ≤5e-6 essentially removes the regression. See `post_training/README.md`
-for the full stage geometry, and for the changes upstream open-instruct needs in
-order to run on plain Slurm from a local checkpoint (those patches are described
-there, not shipped).
+### 4. Evaluation
 
 Evaluation uses [olmes](https://github.com/allenai/olmes) at a pinned SHA in its
-own conda env (see `evaluation/README.md`). The reasoning–recall tradeoff is read
-off three macros, each reported only when **every** member is present:
-
-| Macro | Members |
-|---|---|
-| **REASON** (6) | GSM8K, GSM-Symbolic, GSM-Plus, BBH, DROP, MATH |
-| **MC** (6) | MMLU, MMLU-Pro, ARC-C, OpenBookQA, WinoGrande, AGI-Eval |
-| **RECALL** (3) | TriviaQA, NaturalQs, SimpleQA — full splits (7993 / 3610 / 4321) |
-
-Two suites are used and must not be mixed: base-style `::olmes` aliases (no chat
-format, greedy) for the base / mid-training / from-scratch checkpoints, and the
-Tulu-3 `::tulu` / `::llama3` aliases for SFT and later. Six tasks have no
-`::tulu` variant (ARC-C, NaturalQs, TriviaQA, HellaSwag, WinoGrande, MBPP) and
-use `::olmes` at every stage.
-
-Three scoring choices depart from the olmes defaults and materially affect the
-reported numbers:
-
-- **BBH** is scored with a format-robust re-extraction rather than the shipped
-  extractor. The default parses only `"So the answer is X"`, so models whose RL
-  training pushed them toward `\boxed{}` get correct answers scored 0 — about
-  8–11 pp for the distilled and RLVR runs but only ~2.5 pp for NTP. Left
-  uncorrected it is a model-dependent artifact that reverses the BBH ranking.
-- **MATH** uses `exact_match_flex`; the default `exact_match` is far too strict
-  on chat-formatted LaTeX and collapses to near zero.
-- **IFEval** is reported at `inst_level_loose_acc`, not olmes' default
-  `prompt_level_loose_acc`.
-
-Note also that `gsm_plus` and `gsm_symbolic` are not tasks in stock olmes, so
-those two REASON members require adding their configs. No evaluation outputs and
-no model weights are released, so `evaluation/` specifies the protocol rather
-than reproducing our numbers directly.
+own conda env (see `evaluation/README.md`). 
+See [`evaluation/README.md`](evaluation/README.md) for setup and reproduction details.
 
 ## Citation
 If you find this work useful, please cite:
