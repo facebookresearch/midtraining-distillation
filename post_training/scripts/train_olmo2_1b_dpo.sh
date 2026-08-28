@@ -38,17 +38,12 @@ source "$VENV_PATH/bin/activate"
 
 export PYTHONNOUSERSITE=1
 export HF_HOME="${HF_HOME:-${HOME}/.cache/huggingface}"
-# Compute nodes can't reach huggingface.co; force offline so HEAD requests
-# don't burn ~minute on retries before falling back to cache.
 export HF_HUB_OFFLINE=1
 export HF_DATASETS_OFFLINE=1
 export WANDB_PROJECT=olmo2_1b_post_training
 export WANDB_API_KEY="${WANDB_API_KEY:-}"
 # Point WANDB_BASE_URL at a self-hosted W&B if you use one.
 export WANDB_BASE_URL="${WANDB_BASE_URL:-https://api.wandb.ai}"
-# Default to offline: compute nodes often cannot reach the W&B API, and a
-# blocking wandb.init() will stall or kill a multi-hour job. Sync afterwards
-# with `wandb sync <run-dir>`. The raised init timeout is belt-and-braces.
 export WANDB_MODE=offline
 export WANDB_INIT_TIMEOUT=300
 export WANDB__SERVICE_WAIT=300
@@ -79,13 +74,6 @@ echo "=== DPO ==="
 echo "SFT_CKPT=${SFT_CKPT}"
 echo "OUTPUT_DIR=${OUTPUT_DIR}"
 
-# Batch size configuration - conservative for DPO
-# Match published recipe (docs/olmo2.md): per_device_batch=8, grad_accum=2
-# → effective 128 on 8 GPUs. Earlier per_device=4 (effective 64) was a
-# memory-driven choice that didn't match the published recipe; LR=2.5e-6 is
-# calibrated to batch 128, so smaller batches are effectively over-stepped
-# per token. The original "OOM at batch_size=8" comment was from older
-# attempts; on H200 (141GB) at seq_len 2048 the published config should fit.
 PER_DEVICE_BATCH=${PER_DEVICE_BATCH:-8}
 GRAD_ACCUM=${GRAD_ACCUM:-2}
 
@@ -145,13 +133,8 @@ accelerate launch \
     open_instruct/dpo_tune_cache.py \
     "${DPO_ARGS[@]}"
 
-# Normalize the RoPE config schema. Newer transformers saves the nested
-# `rope_parameters` key; older transformers + vLLM read only the flat
-# `rope_theta` and silently fall back to 10000, corrupting attention. This
-# adds the flat schema in place and is idempotent.
+
 echo "=== Normalizing RoPE config schema for older inference stacks ==="
-# Absolute path: under sbatch "$0" points at the slurm staging dir, so
-# "$(dirname "$0")" cannot find the sibling .py.
 python ${POST_TRAINING_SCRIPTS}/normalize_rope_config.py "${OUTPUT_DIR}/${EXP_NAME}" \
     || { echo "ERROR: normalize_rope_config.py failed; eval will produce degenerate output" >&2; exit 1; }
 
@@ -163,10 +146,6 @@ echo "=== DPO done -> ${OUTPUT_DIR} ==="
 if [ "${AUTO_EVAL:-1}" = "1" ]; then
     EVAL_OUTPUT_DIR="${EVAL_OUTPUT_DIR:-${OLMES_ROOT}/results/posttrain/${EXP_NAME}}"
     echo "=== Auto-submitting OLMES eval -> ${EVAL_OUTPUT_DIR} ==="
-    # No `sbatch --export=` (some cgroup-v2 sites hold the job at Priority=0).
-    # The child eval must not inherit this job's venv PATH -- conda activate only
-    # prepends, so a polluted PATH resolves python to the wrong venv. Scrub the
-    # venv vars and pin a system PATH instead.
     env -u VIRTUAL_ENV -u PYTHONPATH -u PYTHONHOME -u CONDA_PREFIX -u CONDA_DEFAULT_ENV \
         PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" \
         HOME="${HOME}" USER="${USER}" \

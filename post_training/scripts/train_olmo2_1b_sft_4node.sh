@@ -1,10 +1,6 @@
 #!/usr/bin/env bash
-# OLMo-2 1B SFT — 4-node H200 multi-node version.
+# OLMo-2 1B SFT — 4-node version.
 #
-# Same recipe as train_olmo2_1b_sft.sh (effective batch 128, LR 3e-5, 2 epochs).
-# Different parallelism: 32 GPUs across 4 nodes via accelerate's DeepSpeed
-# multi-node launcher. Per-device batch and grad_accum recalculated so the
-# effective batch matches the single-node baseline.
 #
 # Expected wallclock: ~1.5-2h (vs ~6h single-node), but actual speedup will
 # be sub-linear due to cross-node gradient sync.
@@ -42,10 +38,6 @@ source "$VENV_PATH/bin/activate"
 
 export PYTHONNOUSERSITE=1
 export HF_HOME="${HF_HOME:-${HOME}/.cache/huggingface}"
-# Compute nodes can't reliably reach huggingface.co -> the tulu-3-sft dataset HEAD
-# check times out (5 retries then FAIL). The dataset is cached under HF_HOME, so
-# force offline to skip the Hub round-trip. (Hub flakiness has killed SFT jobs
-# outright, so this is on by default.)
 export HF_HUB_OFFLINE=1
 export HF_DATASETS_OFFLINE=1
 export WANDB_PROJECT=olmo2_1b_post_training
@@ -74,9 +66,6 @@ export MASTER_ADDR="${HEAD_NODE_IP}"
 export MASTER_PORT="${MAIN_PORT}"
 export NCCL_DEBUG=WARN
 export NCCL_IB_TIMEOUT=22
-# Cluster-specific: interface used for inter-node NCCL. `eth0` suits a
-# plain-Ethernet cluster; InfiniBand sites usually need something else
-# (check `ip link`). Unset entirely to let NCCL auto-detect.
 export NCCL_SOCKET_IFNAME="${NCCL_SOCKET_IFNAME:-eth0}"
 
 # ----- inputs -----
@@ -152,8 +141,7 @@ FT_ARGS=(
     --try_launch_beaker_eval_jobs False
 )
 
-# Cache prepass: single process on the head node only. The dataset cache
-# lives on shared FS so all training workers can read it.
+
 echo "=== SFT 4-node: prebuilding dataset cache (single process, head node) ==="
 accelerate launch \
     --mixed_precision bf16 \
@@ -162,11 +150,7 @@ accelerate launch \
     "${FT_ARGS[@]}" \
     --cache_dataset_only
 
-# Stage FT_ARGS to disk so the srun heredoc can re-load it as a real array.
-# Writing one arg per line (NUL-safe via -d '') would be ideal, but no arg
-# contains a newline so plain `printf "%s\n"` is enough — and mapfile -t reads
-# it back cleanly. This avoids the text-serialization bug where unquoted
-# ${FT_ARGS[@]} inside a "..." srun heredoc word-splits values mid-flag.
+
 FT_ARGS_FILE="${OUTPUT_DIR}/.ft_args_${SLURM_JOB_ID}.txt"
 printf '%s\n' "${FT_ARGS[@]}" > "${FT_ARGS_FILE}"
 echo "=== SFT 4-node: staged FT_ARGS to ${FT_ARGS_FILE} (${#FT_ARGS[@]} elements) ==="
@@ -212,10 +196,6 @@ echo "=== SFT 4-node done -> ${OUTPUT_DIR} ==="
 if [ "${AUTO_EVAL:-1}" = "1" ]; then
     EVAL_OUTPUT_DIR="${EVAL_OUTPUT_DIR:-${OLMES_ROOT}/results/posttrain/${EXP_NAME}}"
     echo "=== Auto-submitting OLMES eval -> ${EVAL_OUTPUT_DIR} ==="
-    # No `sbatch --export=` (some cgroup-v2 sites hold the job at Priority=0).
-    # The child eval must not inherit this job's venv PATH, so scrub the venv
-    # vars and pin a system PATH in sbatch's own environment. sbatch is called
-    # by absolute path because the pinned PATH no longer provides it.
     env -u VIRTUAL_ENV -u PYTHONPATH -u PYTHONHOME -u CONDA_PREFIX -u CONDA_DEFAULT_ENV \
         PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" \
         HOME="${HOME}" USER="${USER}" \

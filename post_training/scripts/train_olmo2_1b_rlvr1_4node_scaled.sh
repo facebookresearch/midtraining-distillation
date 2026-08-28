@@ -6,51 +6,6 @@
 # GRPO update count exactly we also double total_episodes so 2× larger
 # rollouts × 2× episodes ⇒ the same 2604 updates as the 2-node recipe.
 #
-# Published 2-node recipe (docs/olmo2.md):
-#   num_learners_per_node = "4 8"           → 12 learners
-#   num_unique_prompts_rollout × samples    = 48 × 16 = 768 sequences/update
-#   samples_per_learner_per_update          = 768 / 12 = 64
-#   num_mini_batches = 2 → local minibatch  = 32
-#   total_episodes = 2,000,000              → 2604 GRPO update steps
-#   vllm_num_engines × TP = 1 × 4           = 4 GPUs
-#   ⇒ 12 + 4 = 16 GPUs over 2 nodes, ~43h
-#
-# 4-node scaled (this script):
-#   num_learners_per_node = "6 6 6 6"       → 24 learners
-#   num_unique_prompts_rollout × samples    = 96 × 16 = 1536 sequences/update
-#   samples_per_learner_per_update          = 1536 / 24 = 64
-#   num_mini_batches = 2 → local minibatch  = 32   ✓ matches published
-#   total_episodes = 4,000,000              → 2604 GRPO updates ✓ matches published
-#   vllm_num_engines × TP = 4 × 2           = 8 GPUs (1 engine/node, TP=2)
-#   ⇒ 24 + 8 = 32 GPUs across 4 nodes, ~24h (~1.8× faster than 43h published)
-#
-# Why TP=2 (not TP=4): with 6 learners/node, only 2 GPUs/node are free.
-# A TP=4 vLLM engine requires 4 GPUs packed on a single node (STRICT_PACK),
-# which is infeasible under this 6/6/6/6 learner layout — total GPU count
-# matches (8 free, 8 needed) but per-node bin packing fails, and vLLM then
-# waits on placement forever. TP=2 × 4 engines fits exactly: 6 + 2 = 8/node.
-#
-# What's preserved vs published:
-#   ✓ local minibatch = 32 (the LR-calibration unit)
-#   ✓ samples per learner = 64
-#   ✓ num_mini_batches = 2
-#   ✓ total GRPO updates = 2604
-#
-# What's different vs published:
-#   ✗ 24 learners instead of 12 (doubled)
-#   ✗ rollout batch 1536 instead of 768 (doubled)
-#   ✗ total_episodes = 4M instead of 2M (doubled to preserve 2604 updates)
-#   ✗ 8 vLLM GPUs instead of 4 (doubled with rollout)
-#   ✗ vLLM sharding: 4 engines × TP=2 (vs published 1 × TP=4) —
-#     forced by the 6-learner/node geometry; see TP rationale above.
-#
-# This is a "scaled" reproduction: faster wall-clock, identical update count
-# and per-update geometry. The bit-exact 2-node version is
-# train_olmo2_1b_rlvr1_4node.sh (2-node Ray on 4-node Slurm allocation,
-# 16 GPUs idle, ~43h).
-#
-# If 6 6 6 6 placement fails in grpo_fast_resource_plan, fallback:
-#   NUM_LEARNERS_PER_NODE="4 4 8 8"  (still 24 learners, asymmetric)
 #
 # Submit:
 #   sbatch post_training/scripts/train_olmo2_1b_rlvr1_4node_scaled.sh
@@ -404,11 +359,8 @@ echo "=== RLVR-1 done -> ${OUTPUT_DIR} ==="
 if [ "${AUTO_EVAL:-1}" = "1" ]; then
     EVAL_OUTPUT_DIR="${EVAL_OUTPUT_DIR:-${OLMES_ROOT}/results/posttrain/${EXP_NAME}-2604steps}"
     EVAL_QOS="${EVAL_QOS:-CHANGE_ME}"
-    # Partition is inferred from QoS prefix (h100_* -> h100, h200_* -> h200).
     EVAL_PARTITION="${EVAL_QOS%%_*}"
     echo "=== Auto-submitting OLMES eval -> ${EVAL_OUTPUT_DIR} (qos=${EVAL_QOS}) ==="
-    # No `sbatch --export=` (some cgroup-v2 sites hold the job). Vars ride in
-    # sbatch's own env and reach the job via the default --export=ALL.
     env RLVR1_PARENT_DIR="${OUTPUT_DIR}" EXP_NAME="${EXP_NAME}" \
         OUTPUT_DIR="${EVAL_OUTPUT_DIR}" \
         sbatch --qos="${EVAL_QOS}" --partition="${EVAL_PARTITION}" \

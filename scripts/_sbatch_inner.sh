@@ -8,13 +8,8 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
-
-# Re-source env.sh as a belt-and-braces guard for re-runs from an interactive
-# session where the caller forgot to source it.
 source "${ROOT_DIR}/scripts/env.sh"
 
-# Make `conda activate` work inside this non-interactive shell. Honor a
-# CONDA_PROFILE_SH override if the user set one; otherwise derive from `conda`.
 if [ -n "${CONDA_PROFILE_SH:-}" ] && [ -f "${CONDA_PROFILE_SH}" ]; then
     # shellcheck disable=SC1090
     source "${CONDA_PROFILE_SH}"
