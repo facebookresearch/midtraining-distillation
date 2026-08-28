@@ -35,8 +35,6 @@ def switch_distillation(s_logits, t_logits, labels, q=0.2, T=2.0):
 ```
 
 This repository also contains training and evaluation code to replicate the experiments in our paper.
-Our code makes extensive use of [facebookresearch/lingua](https://github.com/facebookresearch/lingua) for pre-training and mid-training,
-[allenai/open-instruct](https://github.com/allenai/open-instruct) for post-training, and [allenai/olmes](https://github.com/allenai/olmes) for evaluation.
 
 ## Getting Started
 
@@ -58,49 +56,67 @@ bash scripts/fetch_models.sh           # or ONLY=student for just the student
 python scripts/smoke_test.py           # asserts that HF→Lingua-DCP conversion is working properly
 ```
 
-## Tradeoff
+## Reasoning-Recall Tradeoff
+<p align="center">
+  <img src="./figures/tradeoff.png" width="1200" style="vertical-align:top; border:0;">
+</p>
 
-### Lingua Training Recipes
+As shown in the plot, we find that KD exhibits a stage-dependent tradeoff behavior across pre-training and mid-training. We describe our training and evaluation scripts for this tradeoff below. 
 
-All mid-training recipes share one canonical setup and differ **only** in the
-teacher and the loss: OLMo-2-0425-1B student initialized from
-`stage1-step1907359-tokens4001B`, Dolmino mid-training mix, 28800 steps
-(~60B tokens), 4-node FSDP, bf16, FP8 teacher where applicable.
+## Reproducing the Experiments
 
-| Recipe | Loss |
+### 1. Pre-training
+
+Our pre-training and mid-training code builds on
+[facebookresearch/lingua](https://github.com/facebookresearch/lingua).
+
+`pretrain_recipes/` contains the from-scratch baselines: `pt_ntp`, `pt_fkd`,
+and `pt_rkd`. We randomly initialize an `OLMo-2-0425-1B` student
+(`init_ckpt_path: null`) and train on the Dolmino mix for 48,000 steps (~100B tokens).
+
+| Recipe | Objective |
 |---|---|
-| `ntp_baseline` | Vanilla next-token-prediction CE. No teacher. |
-| `fkd` | Forward KL. `L = (1-a)*CE + a*T^2*KL(p_T||p_S)`, a=0.5, T=2. |
-| `rkd` | Reverse KL (MiniLLM-style). `L = (1-a)*CE + a*T^2*KL(p_S||p_T)`, a=0.5, T=2. The KL-direction counterpart of `fkd`. |
-| **`switch_distill`** | **The method.** Partitions tokens between CE and reverse KL by teacher entropy: `L = (1-m)*lam*CE + m*T^2*KL(p_S||p_T)`, `m = 1[H(p_T)<=tau]`. Low-entropy (confident-teacher) tokens get RKL; the rest get CE. q=0.20, lam=1, T=2. |
+| `pt_ntp` | Standard next-token prediction (CE); no teacher. |
+| `pt_fkd` | Forward KL: $L = (1-\alpha)\,\mathrm{CE} + \alpha T^2\,D_{\mathrm{KL}}(p_T \Vert p_S)$, with $\alpha=0.5, T=2$. |
+| `pt_rkd` | Reverse KL: $L = (1-\alpha)\,\mathrm{CE} + \alpha T^2\,D_{\mathrm{KL}}(p_S \Vert p_T)$, with $\alpha=0.5, T=2$. |
 
-**The student is always the 1B model** (`OLMo-2-0425-1B`, initialized from
-`stage1-step1907359-tokens4001B` for mid-training, random for from-scratch).
-Only the teacher varies, and it is a parameter rather than part of the recipe:
+Launch pre-training experiments with:
 
 ```bash
-RECIPE=switch_distill TEACHER=7b bash scripts/launch_midtrain.sh   # OLMo-2-1124-7B-Instruct (default)
-RECIPE=fkd            TEACHER=1b bash scripts/launch_midtrain.sh   # OLMo-2-0425-1B-Instruct
+RECIPE=pt_ntp bash scripts/launch_pretrain.sh
+RECIPE=pt_fkd TEACHER=7b bash scripts/launch_pretrain.sh
+RECIPE=pt_rkd TEACHER=7b bash scripts/launch_pretrain.sh
+```
+
+### 2. Mid-training
+
+All mid-training recipes use the same setup and differ only in the training
+objective and teacher. We initialize an `OLMo-2-0425-1B` student from
+`stage1-step1907359-tokens4001B` and train on the Dolmino mix for
+28,800 steps (~60B tokens).
+
+| Recipe | Objective |
+|---|---|
+| `ntp_baseline` | Standard next-token prediction (CE); no teacher. |
+| `fkd` | Forward KL: $L = (1-\alpha)\,\mathrm{CE} + \alpha T^2\,D_{\mathrm{KL}}(p_T \Vert p_S)$, with $\alpha=0.5, T=2$. |
+| `rkd` | Reverse KL: $L = (1-\alpha)\,\mathrm{CE} + \alpha T^2\,D_{\mathrm{KL}}(p_S \Vert p_T)$, with $\alpha=0.5, T=2$. |
+| **`switch_distill`** | **Switch Distillation (ours):** routes the lowest-entropy $q$ fraction of tokens to reverse KL and the remainder to CE. We use $q=0.20, T=2$. |
+
+The student is always `OLMo-2-0425-1B`; teacher choice is configured
+separately:
+
+```bash
+RECIPE=switch_distill TEACHER=7b bash scripts/launch_midtrain.sh
+RECIPE=fkd            TEACHER=1b bash scripts/launch_midtrain.sh
 RECIPE=fkd TEACHER_PATH=/path/to/any/hf/model bash scripts/launch_midtrain.sh
 ```
 
-The paper reports both teacher sizes for `fkd` and `rkd` -- that is the
-teacher-choice axis -- which is why teacher size is a flag rather than four
-near-duplicate recipe files.
+### 3. Post-training 
+We fork from [allenai/open-instruct](https://github.com/allenai/open-instruct) for post-training. 
 
-`τ` is the q-th quantile of teacher entropy, recomputed per batch. At q=0.20
-the low-entropy 20% of tokens are distilled and the remaining 80% are trained
-with cross-entropy.
 
-The `pretrain_recipes/` are the from-scratch counterparts (`pt_ntp`,
-`pt_fkd`, `pt_rkd`) at 48000 steps (~100B tokens) with
-`init_ckpt_path: null`. Same loss, teacher, data, and token budget as
-mid-training — only the initialization differs. That contrast is what shows the
-reasoning–recall tradeoff is specific to the mid-training regime: it is a
-KD-vs-NTP comparison, so there is no from-scratch `switch_distill` recipe.
-
-### Post-training and Evaluation
-
+### 4. Evaluation
+We use [allenai/olmes](https://github.com/allenai/olmes) for evaluation.
 Post-training runs the OLMo-2 1B recipe (Tulu-3 SFT → DPO → RLVR1 → RLVR2) on
 top of any mid-training checkpoint, which is how we check whether the
 mid-training gains survive alignment. One command chains all four stages:
