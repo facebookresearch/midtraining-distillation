@@ -50,4 +50,3 @@ ls ../apps/main/configs/midtrain_recipes/ | sed 's/\.yaml$//'
 - `lingua_to_hf.sh` — DCP → consolidated → HF for a trained checkpoint.
 - `hf_generate.py` — sample completions from a converted HF dir, to confirm the
   conversion round-tripped.
-- `run_diagnostic.sh` — one-off KD diagnostics on a live run.

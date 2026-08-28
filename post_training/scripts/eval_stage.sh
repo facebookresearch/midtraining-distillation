@@ -1,5 +1,8 @@
 #!/bin/bash
 # Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
 
 # Per-stage async eval helper for pipeline_post_training.sh.
 # Submitted with --dependency=afterok:<stage_train_jid>; when the stage's
@@ -24,7 +27,9 @@
 set -euo pipefail
 : "${MODEL_SPEC:?MODEL_SPEC must be set}"
 : "${OUTPUT_DIR:?OUTPUT_DIR must be set}"
-EVAL_QOS="${EVAL_QOS:-CHANGE_ME}"
+# Empty => omit --qos and let the site default apply.
+EVAL_QOS="${EVAL_QOS:-}"
+QOS_ARG=(); [[ -n "${EVAL_QOS}" ]] && QOS_ARG=(--qos="${EVAL_QOS}")
 EVAL_SCRIPT=${OLMES_ROOT}/eval_single_posttrain.sh
 
 # Resolve the HF checkpoint. SFT/DPO -> MODEL_SPEC is the exact dir.
@@ -45,10 +50,10 @@ if [[ -z "${MODEL_PATH}" || ! -f "${MODEL_PATH}/config.json" ]]; then
 fi
 
 mkdir -p "${OUTPUT_DIR}"
-echo "Submitting eval: ${MODEL_PATH} -> ${OUTPUT_DIR} (qos ${EVAL_QOS})"
+echo "Submitting eval: ${MODEL_PATH} -> ${OUTPUT_DIR} (qos ${EVAL_QOS:-<site default>})"
 # Do not pass `sbatch --export=`: some cgroup-v2 Slurm sites then hold the
 # job at Priority=0 forever. Put the vars in sbatch's own environment instead.
 env HOME="${HOME}" USER="${USER}" \
     MODEL_PATH="${MODEL_PATH}" OUTPUT_DIR="${OUTPUT_DIR}" \
-    sbatch --qos="${EVAL_QOS}" \
+    sbatch "${QOS_ARG[@]}" \
     "${EVAL_SCRIPT}"

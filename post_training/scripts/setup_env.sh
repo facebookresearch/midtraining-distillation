@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 # Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
 
 # Fresh uv-based environment setup for OLMo-2 1B SFT/DPO/RLVR.
 # Creates a clean virtual environment from scratch, bypassing conda dependency hell.

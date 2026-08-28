@@ -1,4 +1,11 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
+#
+# NOTE: portions of this file are derived from third-party code licensed under
+# the Apache License, Version 2.0. That notice is retained below and continues
+# to govern those portions; they are not relicensed by the above.
 
 # Copyright 2024 Lingua-Fork and the Tatsu Lab.
 # Copyright 2022 EleutherAI and The HuggingFace Inc. team. All rights reserved.

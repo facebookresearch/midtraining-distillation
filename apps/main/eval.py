@@ -1,5 +1,8 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 #
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
+#
 # Trimmed for release: this module previously also hosted the lm-eval-harness
 # evaluation backend (EvalHarnessLM / launch_eval / LMHarnessArgs). Every
 # released recipe evaluates with OLMES via apps/main/eval_olmes.py, so only the

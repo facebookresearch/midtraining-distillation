@@ -61,7 +61,17 @@ python scripts/smoke_test.py           # asserts that HF→Lingua-DCP conversion
   <img src="./figures/tradeoff.png" width="1200" style="vertical-align:top; border:0;">
 </p>
 
-As shown in the plot, we find that KD exhibits a stage-dependent tradeoff behavior across pre-training and mid-training. We describe our training and evaluation scripts for this tradeoff below. 
+As shown in the plot, KD exhibits a **stage-dependent** tradeoff. At the
+mid-training budget, recipes that gain on reasoning (GSM8K, DROP, MATH)
+systematically give up ground on factual recall (TriviaQA, Natural Questions)
+relative to next-token prediction on the same data and token budget. The same
+recipes trained from scratch do not show this cost, which is what makes the
+tradeoff specific to mid-training rather than a property of KD itself.
+
+Switch Distillation targets that cost directly: by routing only the
+lowest-entropy tokens to reverse KL and leaving the rest on cross-entropy, it
+recovers recall relative to standard KD while keeping the reasoning gains. The
+training and evaluation scripts below reproduce both halves of this comparison.
 
 ## Reproducing the Experiments
 
@@ -70,7 +80,7 @@ As shown in the plot, we find that KD exhibits a stage-dependent tradeoff behavi
 Our pre-training and mid-training code builds on
 [facebookresearch/lingua](https://github.com/facebookresearch/lingua).
 
-`pretrain_recipes/` contains the from-scratch baselines: `pt_ntp`, `pt_fkd`,
+`apps/main/configs/pretrain_recipes/` contains the from-scratch baselines: `pt_ntp`, `pt_fkd`,
 and `pt_rkd`. We randomly initialize an `OLMo-2-0425-1B` student
 (`init_ckpt_path: null`) and train on the Dolmino mix for 48,000 steps (~100B tokens).
 
@@ -121,8 +131,28 @@ See [`post_training/README.md`](post_training/README.md) for setup and reproduct
 ### 4. Evaluation
 
 Evaluation uses [olmes](https://github.com/allenai/olmes) at a pinned SHA in its
-own conda env (see `evaluation/README.md`). 
-See [`evaluation/README.md`](evaluation/README.md) for setup and reproduction details.
+own conda env. `evaluation/scripts/run_evals.sh` runs the canonical suite,
+grouped into the categories we report (reasoning, knowledge, factual recall,
+instruction following). See [`evaluation/README.md`](evaluation/README.md) for
+setup, the per-stage task aliases, and the scoring choices that differ from the
+olmes defaults.
+
+## Acknowledgements
+
+This repository builds on several open-source projects:
+[facebookresearch/lingua](https://github.com/facebookresearch/lingua) for
+pre-training and mid-training, [allenai/open-instruct](https://github.com/allenai/open-instruct)
+for post-training, and [allenai/olmes](https://github.com/allenai/olmes) for
+evaluation. Training data comes from
+[allenai/dolmino-mix-1124](https://huggingface.co/datasets/allenai/dolmino-mix-1124),
+and the student and teacher checkpoints are the
+[OLMo-2](https://huggingface.co/collections/allenai/olmo-2) releases. Portions of
+`setup/convert_consolidated_lingua_ckpt_to_hf.py` derive from Apache-2.0 code by
+EleutherAI and HuggingFace; that notice is retained in the file.
+
+## License
+
+This project is MIT licensed — see [LICENSE](LICENSE).
 
 ## Citation
 If you find this work useful, please cite:

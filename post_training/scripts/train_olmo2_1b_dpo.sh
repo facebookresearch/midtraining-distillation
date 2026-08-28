@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 # Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
 
 # OLMo-2 1B DPO on top of the SFT checkpoint produced by train_olmo2_1b_sft.sh.
 #

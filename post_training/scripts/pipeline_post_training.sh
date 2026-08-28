@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 # Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
 
 # Orchestrator: submits SFT -> DPO -> RLVR1 -> RLVR2 as four slurm jobs
 # chained via --dependency=afterok. Each stage's HF checkpoint is wired
@@ -106,7 +109,7 @@ if [[ -n "${QOS:-}" ]]; then
     QOS_ARG=(--qos="${QOS}")
 fi
 # qos string for watchdog (watchdog itself runs on a tiny CPU slot; reuse same qos)
-WATCHDOG_QOS="${QOS:-CHANGE_ME}"
+WATCHDOG_QOS="${QOS:-}"
 
 SFT_EXP="${RUN_TAG}_sft"
 DPO_EXP="${RUN_TAG}_dpo"
@@ -210,7 +213,7 @@ submit_stage_eval() {
     # spawns uses EVAL_QOS.
     env HOME="${HOME}" USER="${USER}" \
         MODEL_SPEC="${model_spec}" OUTPUT_DIR="${out_dir}" \
-        EVAL_QOS="${EVAL_QOS:-CHANGE_ME}" \
+        EVAL_QOS="${EVAL_QOS:-}" \
         sbatch --parsable \
         ${QOS:+--qos="${QOS}"} \
         --dependency=afterok:"${train_jid}" \

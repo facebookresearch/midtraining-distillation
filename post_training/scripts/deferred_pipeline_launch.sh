@@ -1,5 +1,8 @@
 #!/bin/bash
 # Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
 
 # Deferred post-training launcher: waits for a midtrain HF checkpoint to be
 # written, then runs pipeline_post_training.sh (SFT->DPO->RLVR1->RLVR2).
@@ -26,7 +29,8 @@ POST_TRAINING_SCRIPTS="${POST_TRAINING_SCRIPTS:-$(cd -- "$(dirname -- "${BASH_SO
 set -euo pipefail
 : "${BASE_CKPT:?BASE_CKPT must be set}"
 : "${RUN_TAG:?RUN_TAG must be set}"
-export QOS="${QOS:-CHANGE_ME}"
+# Empty => the flag is omitted downstream and the site default applies.
+export QOS="${QOS:-}"
 export LEARNING_RATE="${LEARNING_RATE:-5e-6}"
 SCRIPTS_DIR=${POST_TRAINING_SCRIPTS}
 

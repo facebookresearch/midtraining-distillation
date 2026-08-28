@@ -1,4 +1,7 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
 
 # This file from the xFormers repo is just a example of how to implement
 # probing of the activations of a model, without changing anything.

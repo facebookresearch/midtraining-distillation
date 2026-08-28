@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 # Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
 
 # Environment configuration. Source before training, eval, or analysis:
 #   source scripts/env.sh
@@ -48,6 +51,14 @@ export MIDTRAIN_ROOT="${MIDTRAIN_ROOT:-${CACHE_DIR}/runs/midtrain}"
 export PRETRAIN_ROOT="${PRETRAIN_ROOT:-${CACHE_DIR}/runs/pretrain}"
 export EVAL_ROOT="${EVAL_ROOT:-${CACHE_DIR}/runs/evals}"
 export SLURM_LOG_DIR="${SLURM_LOG_DIR:-${CACHE_DIR}/runs/slurm_logs}"
+export POST_TRAINING_ROOT="${POST_TRAINING_ROOT:-${CACHE_DIR}/runs/post_training}"
+
+# External checkouts used by the post-training and evaluation stages. Left empty
+# because they are yours to clone; the scripts that need them fail with a
+# pointer rather than guessing. See post_training/README.md and
+# evaluation/README.md.
+export OPEN_INSTRUCT_ROOT="${OPEN_INSTRUCT_ROOT:-}"
+export OLMES_ROOT="${OLMES_ROOT:-}"
 
 # Conda. The OLMES env is separate because it pins different vLLM /
 # transformers versions than training does — see evaluation/README.md.
@@ -63,7 +74,8 @@ export SLURM_PARTITION="${SLURM_PARTITION:-}"
 # Wandb. Empty → your personal default entity.
 export WANDB_ENTITY="${WANDB_ENTITY:-}"
 
-mkdir -p "${CACHE_DIR}" "${MIDTRAIN_ROOT}" "${PRETRAIN_ROOT}" "${EVAL_ROOT}" "${SLURM_LOG_DIR}"
+mkdir -p "${CACHE_DIR}" "${MIDTRAIN_ROOT}" "${PRETRAIN_ROOT}" "${EVAL_ROOT}" \
+         "${POST_TRAINING_ROOT}" "${SLURM_LOG_DIR}"
 
 echo "[env] CACHE_DIR=${CACHE_DIR}  (delete with: rm -rf \$CACHE_DIR)"
 echo "[env] DATA_ROOT=${DATA_ROOT}"

@@ -1,5 +1,8 @@
 #!/bin/bash
 # Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
 
 #SBATCH --job-name=train_watchdog
 #SBATCH --output=${SLURM_LOG_DIR}/train_watchdog-%j.out
@@ -58,9 +61,10 @@ fi
 NEXT_ATTEMPT=$((ATTEMPT + 1))
 IFS=',' read -ra TRAIN_KV <<< "${TRAIN_EXPORT_VARS}"
 
-echo "[watchdog] resubmitting ${TRAIN_SCRIPT} with qos=${TRAIN_QOS}"
+echo "[watchdog] resubmitting ${TRAIN_SCRIPT} with qos=${TRAIN_QOS:-<site default>}"
+QOS_ARG=(); [[ -n "${TRAIN_QOS:-}" ]] && QOS_ARG=(--qos="${TRAIN_QOS}")
 NEW_TRAIN_JID=$(env HOME="${HOME}" USER="${USER}" "${TRAIN_KV[@]}" \
-    sbatch --parsable --qos="${TRAIN_QOS}" \
+    sbatch --parsable "${QOS_ARG[@]}" \
     "${TRAIN_SCRIPT}")
 echo "[watchdog] new train jobid: ${NEW_TRAIN_JID}"
 

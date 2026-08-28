@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 # Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
 
 # OLMo-2 1B RLVR stage 1 (GSM/MATH/IF) — 4-NODE SCALED REPRODUCTION
 #
@@ -360,12 +363,16 @@ echo "=== RLVR-1 done -> ${OUTPUT_DIR} ==="
 # Set AUTO_EVAL=0 to opt out.
 if [ "${AUTO_EVAL:-1}" = "1" ]; then
     EVAL_OUTPUT_DIR="${EVAL_OUTPUT_DIR:-${OLMES_ROOT}/results/posttrain/${EXP_NAME}-2604steps}"
-    EVAL_QOS="${EVAL_QOS:-CHANGE_ME}"
-    EVAL_PARTITION="${EVAL_QOS%%_*}"
-    echo "=== Auto-submitting OLMES eval -> ${EVAL_OUTPUT_DIR} (qos=${EVAL_QOS}) ==="
+    # Both empty by default: omit the flags and let the site default apply.
+    EVAL_QOS="${EVAL_QOS:-}"
+    EVAL_PARTITION="${EVAL_PARTITION:-}"
+    EVAL_SBATCH_ARGS=()
+    [[ -n "${EVAL_QOS}" ]] && EVAL_SBATCH_ARGS+=(--qos="${EVAL_QOS}")
+    [[ -n "${EVAL_PARTITION}" ]] && EVAL_SBATCH_ARGS+=(--partition="${EVAL_PARTITION}")
+    echo "=== Auto-submitting OLMES eval -> ${EVAL_OUTPUT_DIR} (qos=${EVAL_QOS:-<site default>}) ==="
     env RLVR1_PARENT_DIR="${OUTPUT_DIR}" EXP_NAME="${EXP_NAME}" \
         OUTPUT_DIR="${EVAL_OUTPUT_DIR}" \
-        sbatch --qos="${EVAL_QOS}" --partition="${EVAL_PARTITION}" \
+        sbatch "${EVAL_SBATCH_ARGS[@]}" \
         ${OLMES_ROOT}/eval_single_rlvr1.sh \
         || echo "WARNING: eval sbatch failed (training output is still saved at ${OUTPUT_DIR})"
 fi

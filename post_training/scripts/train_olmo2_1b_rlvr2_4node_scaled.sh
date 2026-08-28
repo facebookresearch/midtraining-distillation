@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 # Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
 
 # OLMo-2 1B RLVR stage 2 (MATH-only) on top of the RLVR-1 checkpoint —
 # 4-NODE SCALED REPRODUCTION (mirrors train_olmo2_1b_rlvr1_4node_scaled.sh).
@@ -386,9 +389,15 @@ if [ "${AUTO_EVAL:-1}" = "1" ]; then
     if [ -x "${EVAL_WRAPPER}" ]; then
         EVAL_OUTPUT_DIR="${EVAL_OUTPUT_DIR:-${OLMES_ROOT}/results/posttrain/${EXP_NAME}-2604steps}"
         echo "=== Auto-submitting OLMES eval -> ${EVAL_OUTPUT_DIR} ==="
+        # Both empty by default: omit the flags and let the site default apply.
+        EVAL_QOS="${EVAL_QOS:-}"
+        EVAL_PARTITION="${EVAL_PARTITION:-}"
+        EVAL_SBATCH_ARGS=()
+        [[ -n "${EVAL_QOS}" ]] && EVAL_SBATCH_ARGS+=(--qos="${EVAL_QOS}")
+        [[ -n "${EVAL_PARTITION}" ]] && EVAL_SBATCH_ARGS+=(--partition="${EVAL_PARTITION}")
         env RLVR2_PARENT_DIR="${OUTPUT_DIR}" EXP_NAME="${EXP_NAME}" \
             OUTPUT_DIR="${EVAL_OUTPUT_DIR}" \
-            sbatch --qos="${EVAL_QOS:-CHANGE_ME}" --partition=h200 \
+            sbatch "${EVAL_SBATCH_ARGS[@]}" \
             "${EVAL_WRAPPER}" \
             || echo "WARNING: eval sbatch failed (training output is still saved at ${OUTPUT_DIR})"
     else
