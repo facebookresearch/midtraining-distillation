@@ -9,8 +9,6 @@ Built on [facebookresearch/lingua](https://github.com/facebookresearch/lingua),
 with post-training via [allenai/open-instruct](https://github.com/allenai/open-instruct)
 and evaluation via [allenai/olmes](https://github.com/allenai/olmes).
 
-**This release is code only.** No model weights and no evaluation outputs are
-published.
 
 ## Layout
 
