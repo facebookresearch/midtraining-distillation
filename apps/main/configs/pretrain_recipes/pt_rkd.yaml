@@ -1,0 +1,128 @@
+# From-scratch pre-training recipe: pt_rkd
+# Reverse KL distillation from the teacher named by ${TEACHER_PATH}
+# (set TEACHER=1b|7b via the launch script; both were used in the paper). alpha=0.5, T=2.
+# Random init (init_ckpt_path: null), 48000 steps ~= 100B tokens. This is the
+# controlled from-scratch replication reported in the paper's pre-training table;
+# it is NOT the mid-training setting (see ../recipes/ for those).
+name: dolmino-pt-olmo2-1b-pt_fkd_7b-100b
+dump_dir: ${oc.env:PRETRAIN_ROOT}/pt_rkd
+steps: 48000
+probe_freq: null
+seed: 777
+grad_acc_steps: 2
+
+optim:
+  lr: 4.0e-4
+  weight_decay: 0.1
+  warmup: 4000
+  lr_min_ratio: 0.1
+  clip: 1.0
+  beta1: 0.9
+  beta2: 0.95
+  scheduler: cosine
+
+distributed:
+  fsdp_type: full_shard
+  compile: true
+  model_dtype: bf16
+  matmul_allow_tf32: true
+  selective_activation_checkpointing: false
+  tp_size: 1
+
+model:
+  dim: 2048
+  n_layers: 16
+  n_heads: 16
+  n_kv_heads: 16
+  ffn_dim_multiplier: 1.5
+  multiple_of: 256
+  norm_eps: 1e-6
+  rope_theta: 500000
+  weight_tying: false
+  qk_norm: true
+  post_norm: true
+
+teacher_model_path: ${oc.env:TEACHER_PATH}
+
+checkpoint:
+  init_ckpt_path: null   # from scratch
+  dump:
+    every: 1200
+    keep: -1
+  eval:
+    every: 1200
+    keep: -1
+
+
+data:
+  root_dir: ${oc.env:DATA_ROOT}
+  batch_size: 8
+  prefetch_size: 512
+  seq_len: 4096
+  n_views: 2
+  load_async: true
+  add_bos: true
+  add_eos: true
+  disable_cross_doc_attn: true
+  sources:
+    dclm_shuffled: 0.472
+    math_shuffled: 0.208
+    flan_shuffled: 0.166
+    wiki_shuffled: 0.0711
+    pes2o_shuffled: 0.0585
+    stackexchange_shuffled: 0.0245
+  tokenizer:
+    name: hf
+    path: ${oc.env:TOKENIZER_PATH}
+
+  use_reverse_kl_distillation: true
+  reverse_kl_temperature: 2.0
+  reverse_kl_alpha: 0.5
+  reverse_kl_chunk_size: 128
+
+
+profiling:
+  run: false
+
+logging:
+  freq: 10
+  wandb:
+    project: "midtraining-distillation-dolmino-pretrain"
+    entity: ${oc.env:WANDB_ENTITY,null}
+    resume: allow
+
+async_eval_gpus: 1
+eval:
+  dump_dir: ${oc.env:EVAL_ROOT}/slurm_eval_logs
+  generator:
+    max_tokens: 2048
+    temperature: 0.0
+    dtype: bf16
+  olmes:
+    tasks:
+      - gsm8k::olmes
+      - arc_challenge::olmes
+      - hellaswag::olmes
+      - mmlu::olmes
+      - winogrande::olmes
+      - truthfulqa
+      - naturalqs::olmes
+      - drop::olmes
+      - mmlu_pro:mc::none
+      - agi_eval_english:1shot::olmes
+      - triviaqa::olmes
+      - minerva_math_500::olmes
+      - simpleqa::no-judge-short-form
+    model_type: vllm
+    tokenizer_path: ${oc.env:STUDENT_HF_PATH}
+    tokenizer_revision: main
+    max_length: 4096
+    gpu_memory_utilization: 0.8
+    trust_remote_code: true
+    olmes_env: ${oc.env:OLMES_CONDA_ENV}
+  validation:
+    max_steps: 1000
+    use_val_from_train_src: false
+    root_dir: ${oc.env:DATA_ROOT}
+    sources:
+      - dolmino_val

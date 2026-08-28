@@ -1,0 +1,70 @@
+midtraining-distillation
+========================
+
+This repository is a derivative work. It combines modified code from three
+upstream projects with original contributions.
+
+
+1. Meta Platforms, Inc. — lingua
+--------------------------------
+https://github.com/facebookresearch/lingua
+Licensed BSD-3-Clause. Copyright 2024 Meta. Full text in LICENSE.
+
+The `lingua/` package and `apps/main/` are derived from lingua. Modifications:
+
+  * `apps/main/train.py` — added two knowledge-distillation losses
+    (forward KL, and switch distillation: a teacher-entropy partition
+    between cross-entropy and reverse KL) plus their dispatch, the
+    per-token entropy/quantile machinery, KD diagnostics, and an OLMES
+    evaluation hook. Roughly 40 further loss variants were developed here
+    and removed before release.
+  * `lingua/data.py` — `DataArgs` extended with the KD configuration fields;
+    dataloader extended to carry precomputed teacher signals.
+  * `lingua/probe.py` — activation probes (upstream), retained because
+    `lingua/transformer.py` calls into it on the forward path.
+  * `setup/`, `scripts/`, `apps/main/eval_olmes.py`, `apps/main/configs/` —
+    new in this work.
+
+Unmodified upstream files retain their original copyright notices.
+
+
+2. Allen Institute for AI — open-instruct
+-----------------------------------------
+https://github.com/allenai/open-instruct
+Licensed Apache-2.0.
+
+Not redistributed, and no patch against it is distributed. Our runs used
+commit 63834749cbd3119666f40931d41a41fcffed4972 with local modifications that
+adapt open-instruct to plain Slurm and local checkpoints rather than Ai2's
+Beaker infrastructure; those modifications are described, but not shipped, in
+`post_training/README.md`. The Slurm scripts in `post_training/scripts/` are
+original to this work.
+
+
+3. Allen Institute for AI — olmes / oe-eval
+-------------------------------------------
+https://github.com/allenai/olmes
+Licensed Apache-2.0.
+
+Not redistributed, and no patch against it is distributed. Our runs used
+commit c8194ffe7d6b2f7c694a3d5073d382dd01447f30 with local modifications
+(GSM-Plus and GSM-Symbolic task configurations, a corrected GSM8K answer
+extractor, and `exact_match_flex` as the primary metric for
+`minerva_math_500::tulu`); those are described, but not shipped, in
+`evaluation/README.md`. The scorers in `evaluation/scripts/` are original to
+this work.
+
+
+Datasets and models
+-------------------
+Not redistributed. Obtained from HuggingFace under their own licenses:
+
+  * `allenai/dolmino-mix-1124` (training data)
+  * `allenai/OLMo-2-0425-1B`, `allenai/OLMo-2-0425-1B-Instruct`,
+    `allenai/OLMo-2-1124-7B-Instruct` (student init and teachers)
+  * `allenai/tulu-3-sft-olmo-2-mixture`,
+    `allenai/olmo-2-0425-1b-preference-mix`,
+    `allenai/RLVR-GSM-MATH-IF-Mixed-Constraints`, `allenai/RLVR-MATH`
+    (post-training data)
+
+No model weights are released as part of this repository.

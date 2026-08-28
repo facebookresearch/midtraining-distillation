@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+
+# Never commit binary wheels or archives (a 176 MB flash-attn wheel was the
+# reason this line exists; GitHub rejects any file over 100 MB).
+*.whl
+*.tar
+*.tar.gz
+*.zip
+
+# Model weights / checkpoints — this release is code only.
+*.pt
+*.bin
+*.safetensors
+*.distcp
+*.metadata
+consolidated/
+
+# Run outputs. Everything lands under ${CACHE_DIR} by default (see
+# scripts/env.sh); these patterns catch the case where someone points an
+# output root back inside the repo.
+runs/
+results/
+evals/
+wandb/
+slurm_logs/
+*.out
+*.err
+
+# Data
+*.jsonl
+*.jsonl.gz
+*.parquet
+*.csv
+
+# Local env
+.env
+.venv/
+venv/

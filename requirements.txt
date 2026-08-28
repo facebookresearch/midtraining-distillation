@@ -1,0 +1,42 @@
+# Plain-pip dependencies for midtraining-distillation.
+#
+# Torch / xformers / flash-attn are NOT listed here because they need a
+# CUDA-specific index URL and --no-build-isolation; bin/install_requirements.sh
+# layers them in after running `pip install -r requirements.txt`.
+
+# --- Core ML / config / IO ---
+numpy
+scipy
+omegaconf
+msgspec
+orjson
+fsspec
+blobfile
+pynvml
+tiktoken
+sentencepiece
+
+# --- Hugging Face stack ---
+transformers==4.46.3
+tokenizers==0.20.3
+huggingface_hub==0.26.2
+datasets==3.1.0
+safetensors==0.4.5
+
+# --- Eval / metrics ---
+rouge-score
+sacrebleu
+
+# --- Experiment tracking / profiling ---
+wandb
+viztracer
+
+# --- Plotting (evaluation/scripts/*.py) ---
+pandas
+matplotlib
+seaborn
+
+# --- General CLI / IO niceties ---
+tqdm
+requests
+rich
