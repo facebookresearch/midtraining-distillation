@@ -2109,8 +2109,8 @@ def train(args: TrainArgs):
                                 ngpu=args.async_eval_gpus,
                                 time=480,
                                 mem="200GB",
-                                account=os.environ.get("SLURM_ACCOUNT", "comem"),
-                                qos=os.environ.get("SLURM_QOS", "h200_dev"),
+                                account=os.environ.get("SLURM_ACCOUNT", ""),
+                                qos=os.environ.get("SLURM_QOS", ""),
                                 override=False,
                                 dirs_exists_ok=True,
                                 anaconda=os.environ.get(
