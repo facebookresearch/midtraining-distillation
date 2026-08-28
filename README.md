@@ -34,7 +34,7 @@ def switch_distillation(s_logits, t_logits, labels, q=0.2, T=2.0):
     return ce[valid & ~switch].mean() + rkl[switch].mean()
 ```
 
-This repository also contains training and evaluation code to replicate the experiments in our paper. 
+This repository also contains training and evaluation code to replicate the experiments in our paper.
 Our code makes extensive use of [facebookresearch/lingua](https://github.com/facebookresearch/lingua) for pre-training and mid-training,
 [allenai/open-instruct](https://github.com/allenai/open-instruct) for post-training, and [allenai/olmes](https://github.com/allenai/olmes) for evaluation.
 
@@ -58,7 +58,9 @@ bash scripts/fetch_models.sh           # or ONLY=student for just the student
 python scripts/smoke_test.py           # asserts that HF→Lingua-DCP conversion is working properly
 ```
 
-## Recipes
+## Tradeoff
+
+### Lingua Training Recipes
 
 All mid-training recipes share one canonical setup and differ **only** in the
 teacher and the loss: OLMo-2-0425-1B student initialized from
@@ -97,29 +99,68 @@ mid-training — only the initialization differs. That contrast is what shows th
 reasoning–recall tradeoff is specific to the mid-training regime: it is a
 KD-vs-NTP comparison, so there is no from-scratch `switch_distill` recipe.
 
-## Quickstart
+### Post-training and Evaluation
+
+Post-training runs the OLMo-2 1B recipe (Tulu-3 SFT → DPO → RLVR1 → RLVR2) on
+top of any mid-training checkpoint, which is how we check whether the
+mid-training gains survive alignment. One command chains all four stages:
 
 ```bash
-# 5. Train.
-RECIPE=switch_distill DRY_RUN=1 bash scripts/launch_midtrain.sh   # inspect the sbatch
-RECIPE=switch_distill bash scripts/launch_midtrain.sh     # submit (4 nodes, ~56 h)
-RECIPE=pt_ntp bash scripts/launch_pretrain.sh             # from-scratch instead
-
-# 6. Convert a checkpoint back to HF for downstream use.
-bash scripts/lingua_to_hf.sh ${MIDTRAIN_ROOT}/switch_distill/checkpoints/0000028800
-python scripts/hf_generate.py ${MIDTRAIN_ROOT}/switch_distill/checkpoints/0000028800/hf
+RUN_TAG=switch_distill \
+BASE_CKPT=${MIDTRAIN_ROOT}/switch_distill/checkpoints/0000028800/hf \
+bash post_training/scripts/pipeline_post_training.sh
 ```
 
-Checkpoints land in `${MIDTRAIN_ROOT}/<recipe>/checkpoints/<step>/`. The 1B
-recipes need ~26 h on 4 nodes; the 7B-teacher recipes ~56 h.
+**The SFT learning rate is the single most important knob, and it is not the
+Tulu-3 default.** Tulu-3 ships 3e-5, which is calibrated for an
+NTP-initialized model; on a KD-distilled checkpoint it erases most of the
+retained-capability gain and the damage compounds through DPO. We use **5e-6**.
+Anything ≤5e-6 essentially removes the regression. See `post_training/README.md`
+for the full stage geometry, and for the changes upstream open-instruct needs in
+order to run on plain Slurm from a local checkpoint (those patches are described
+there, not shipped).
 
-In-training OLMES evaluation runs every 1200 steps via the `async_eval_gpus`
-path and requires the separate OLMES env (`OLMES_CONDA_ENV`). Delete the
-`eval:` block from a recipe YAML to turn it off.
+Evaluation uses [olmes](https://github.com/allenai/olmes) at a pinned SHA in its
+own conda env (see `evaluation/README.md`). The reasoning–recall tradeoff is read
+off three macros, each reported only when **every** member is present:
+
+| Macro | Members |
+|---|---|
+| **REASON** (6) | GSM8K, GSM-Symbolic, GSM-Plus, BBH, DROP, MATH |
+| **MC** (6) | MMLU, MMLU-Pro, ARC-C, OpenBookQA, WinoGrande, AGI-Eval |
+| **RECALL** (3) | TriviaQA, NaturalQs, SimpleQA — full splits (7993 / 3610 / 4321) |
+
+Two suites are used and must not be mixed: base-style `::olmes` aliases (no chat
+format, greedy) for the base / mid-training / from-scratch checkpoints, and the
+Tulu-3 `::tulu` / `::llama3` aliases for SFT and later. Six tasks have no
+`::tulu` variant (ARC-C, NaturalQs, TriviaQA, HellaSwag, WinoGrande, MBPP) and
+use `::olmes` at every stage.
+
+Three scoring choices depart from the olmes defaults and materially affect the
+reported numbers:
+
+- **BBH** is scored with a format-robust re-extraction rather than the shipped
+  extractor. The default parses only `"So the answer is X"`, so models whose RL
+  training pushed them toward `\boxed{}` get correct answers scored 0 — about
+  8–11 pp for the distilled and RLVR runs but only ~2.5 pp for NTP. Left
+  uncorrected it is a model-dependent artifact that reverses the BBH ranking.
+- **MATH** uses `exact_match_flex`; the default `exact_match` is far too strict
+  on chat-formatted LaTeX and collapses to near zero.
+- **IFEval** is reported at `inst_level_loose_acc`, not olmes' default
+  `prompt_level_loose_acc`.
+
+Note also that `gsm_plus` and `gsm_symbolic` are not tasks in stock olmes, so
+those two REASON members require adding their configs. No evaluation outputs and
+no model weights are released, so `evaluation/` specifies the protocol rather
+than reproducing our numbers directly.
 
 ## Citation
 If you find this work useful, please cite:
-```
 
+```bibtex
+@article{he2026knowledge,
+  title={Knowledge Distillation During Mid-Training Favors Reasoning over Factual Recall},
+  author={He, Jacqueline and Yen, Howard and Li, Shuyue Stella and Li, Margaret and Zeng, Hanqing and Xia, Yinglong and Zhao, Zhuokai and Koh, Pang Wei and Zettlemoyer, Luke and Zhang, Qiang and Yih, Wen-tau},
+  year={2026}
+}
 ```
-
