@@ -45,7 +45,7 @@ conda activate midtraining-distillation
 bash bin/install_requirements.sh      # pip deps, then torch 2.5.0 + xformers + flash-attn (cu121)
 
 # 2. Configure paths in env.sh.
-$EDITOR scripts/env.sh
+vim scripts/env.sh
 source scripts/env.sh                 # required in every fresh shell
 
 # 3. Download and prepare Dolmino data (~2 TB raw + ~2 TB shuffled).
@@ -87,8 +87,8 @@ and `pt_rkd`. We randomly initialize an `OLMo-2-0425-1B` student
 | Recipe | Objective |
 |---|---|
 | `pt_ntp` | Standard next-token prediction (CE); no teacher. |
-| `pt_fkd` | Forward KL: $L = (1-\alpha)\,\mathrm{CE} + \alpha T^2\,D_{\mathrm{KL}}(p_T \Vert p_S)$, with $\alpha=0.5, T=2$. |
-| `pt_rkd` | Reverse KL: $L = (1-\alpha)\,\mathrm{CE} + \alpha T^2\,D_{\mathrm{KL}}(p_S \Vert p_T)$, with $\alpha=0.5, T=2$. |
+| `pt_fkd` | Forward KL: $L = (1-\alpha)\mathrm{CE} + \alpha T^2 D_{\mathrm{KL}}(p_T \Vert p_S)$, with $\alpha=0.5, T=2$. |
+| `pt_rkd` | Reverse KL: $L = (1-\alpha)\mathrm{CE} + \alpha T^2 D_{\mathrm{KL}}(p_S \Vert p_T)$, with $\alpha=0.5, T=2$. |
 
 Launch pre-training experiments with:
 
