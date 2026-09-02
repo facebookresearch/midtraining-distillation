@@ -2,7 +2,7 @@
   <img src="./figures/teaser_fig.png" width="1200" style="vertical-align:top; border:0;">
 </p>
 
-This code is the official implementation of our paper, [Knowledge Distillation During Mid-Training Favors Reasoning over Factual Recall](). It includes code for <b>Switch Distillation</b>, our proposed method that improves both reasoning and factual recall over standard KD during mid-training. A minimal implementation is shown below:
+This code is the official implementation of our paper, [Knowledge Distillation During Mid-Training Favors Reasoning over Factual Recall](https://arxiv.org/abs/2609.01532). It includes code for <b>Switch Distillation</b>, our proposed method that improves both reasoning and factual recall over standard KD during mid-training. A minimal implementation is shown below:
 
 ```python
 import torch
@@ -159,7 +159,7 @@ If you find this work useful, please cite:
 ```bibtex
 @article{he2026knowledge,
   title={Knowledge Distillation During Mid-Training Favors Reasoning over Factual Recall},
-  author={He, Jacqueline and Yen, Howard and Li, Shuyue Stella and Li, Margaret and Zeng, Hanqing and Xia, Yinglong and Zhao, Zhuokai and Koh, Pang Wei and Zettlemoyer, Luke and Zhang, Qiang and Yih, Wen-tau},
+  author={He, Jacqueline and Yen, Howard and Li, Shuyue Stella and Li, Margaret and Zeng, Hanqing and Xia, Yinglong and Zhang, Benyu and Zhao, Zhuokai and Zhang, Qiang and Koh, Pang Wei and Zettlemoyer, Luke and Yih, Wen-tau},
   year={2026}
 }
 ```
